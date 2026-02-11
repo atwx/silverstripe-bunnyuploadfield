@@ -1,0 +1,7 @@
+---
+Name: bunny-stream-routes
+After: 'framework/routes#coreroutes'
+---
+SilverStripe\Control\Director:
+  rules:
+    'api/bunny//$Action': 'YourVendor\BunnyStream\Controllers\BunnyAPIController'

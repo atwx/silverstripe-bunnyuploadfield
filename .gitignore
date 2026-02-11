@@ -1,0 +1,28 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+/client/node_modules/
+/client/dist/*.map
+
+# Environment
+.env
+.env.local
+
+# SilverStripe
+/public/
+_ss_environment.php
+silverstripe.log
+error-*.html
+assets/
