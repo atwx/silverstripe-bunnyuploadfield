@@ -84,8 +84,8 @@ class BunnyVideoUploadField extends FormField
     
     public function Field($properties = [])
     {
-        Requirements::javascript('yourvendor/silverstripe-bunny-stream:client/dist/js/bunny-upload-field.js');
-        Requirements::css('yourvendor/silverstripe-bunny-stream:client/dist/css/bunny-upload-field.css');
+        Requirements::javascript('atwx/silverstripe-bunnyuploadfield:client/dist/js/bunny-upload-field.js');
+        Requirements::css('atwx/silverstripe-bunnyuploadfield:client/dist/css/bunny-upload-field.css');
         
         return parent::Field($properties);
     }
@@ -97,7 +97,6 @@ class BunnyVideoUploadField extends FormField
         $state['data'] = [
             'endpoint' => Director::absoluteURL('api/bunny/create-video'),
             'libraryId' => $this->libraryId,
-            'videoId' => $this->Value()
         ];
         
         return $state;
