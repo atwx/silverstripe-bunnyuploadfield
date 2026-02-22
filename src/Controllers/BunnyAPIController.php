@@ -93,7 +93,8 @@ class BunnyAPIController extends Controller
         return $this->jsonResponse([
             'videoId' => $videoId,
             'uploadUrl' => $uploadUrl,
-            'libraryId' => $libraryId
+            'libraryId' => $libraryId,
+            'apiKey' => $apiKey
         ]);
     }
     

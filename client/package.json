@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourvendor/silverstripe-bunny-stream"
+    "url": "https://github.com/atwx/silverstripe-bunnyuploadfield"
   },
   "keywords": [
     "silverstripe",
