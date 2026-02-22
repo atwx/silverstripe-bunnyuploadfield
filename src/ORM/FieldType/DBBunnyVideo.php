@@ -138,7 +138,7 @@ class DBBunnyVideo extends DBVarchar
      * 
      * @return string
      */
-    public function forTemplate()
+    public function forTemplate(): string
     {
         return $this->getEmbedHTML() ?? '';
     }
