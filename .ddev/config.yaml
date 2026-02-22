@@ -1,0 +1,18 @@
+name: silverstripe-bunnyuploadfield
+type: php
+php_version: "8.3"
+webserver_type: nginx-fpm
+database:
+  type: mariadb
+  version: "10.11"
+
+# Env vars für SilverStripe-Bootstrap in PHPUnit
+web_environment:
+  - SS_DATABASE_CLASS=MySQLDatabase
+  - SS_DATABASE_SERVER=db
+  - SS_DATABASE_USERNAME=db
+  - SS_DATABASE_PASSWORD=db
+  - SS_DATABASE_NAME=bunnyuploadfield_test
+  - SS_BASE_URL=http://silverstripe-bunnyuploadfield.ddev.site/
+  - BUNNY_LIBRARY_ID=test-library-id
+  - BUNNY_API_KEY=test-api-key
