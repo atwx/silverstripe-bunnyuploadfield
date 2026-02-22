@@ -14,9 +14,8 @@ use SilverStripe\Core\Environment;
  */
 class BunnyVideoUploadField extends FormField
 {
-    protected $schemaDataType = FormField::SCHEMA_DATA_TYPE_CUSTOM;
-    // protected $schemaDataType = FormField::SCHEMA_DATA_TYPE_TEXT;
-    // protected $schemaComponent = 'BunnyVideoUploadField';
+    protected $schemaDataType = FormField::SCHEMA_DATA_TYPE_TEXT;
+    protected $schemaComponent = 'BunnyVideoUploadField';
 
     private $libraryId;
     private $apiKey;
@@ -95,23 +94,17 @@ class BunnyVideoUploadField extends FormField
 
     public function Field($properties = [])
     {
-        Requirements::javascript('atwx/silverstripe-bunnyuploadfield:client/dist/js/bunny-upload-field.js');
-        Requirements::css('atwx/silverstripe-bunnyuploadfield:client/dist/css/bunny-upload-field.css');
-
         return parent::Field($properties);
     }
 
-    public function getSchemaStateDefaults()
+    public function getSchemaDataDefaults()
     {
-        $state = parent::getSchemaStateDefaults();
+        $data = parent::getSchemaDataDefaults();
 
-        $state['data'] = [
-            'endpoint' => Director::absoluteURL('api/bunny/create-video'),
-            'libraryId' => $this->libraryId,
-            'videoId' => $this->getValue()
-        ];
+        $data['data']['endpoint'] = $this->getEndpoint();
+        $data['data']['libraryId'] = $this->libraryId;
 
-        return $state;
+        return $data;
     }
 
     public function Type()

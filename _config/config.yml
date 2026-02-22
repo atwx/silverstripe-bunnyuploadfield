@@ -1,0 +1,9 @@
+---
+Name: bunny-upload-field-admin
+After: 'framework/admin'
+---
+SilverStripe\Admin\LeftAndMain:
+  extra_requirements_javascript:
+    - 'atwx/silverstripe-bunnyuploadfield:client/dist/js/bundle.js'
+  extra_requirements_css:
+    - 'atwx/silverstripe-bunnyuploadfield:client/dist/css/bunny-upload-field.css'
