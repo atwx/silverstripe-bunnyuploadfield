@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import fieldHolder from 'components/FieldHolder/FieldHolder';
+import { loadComponent } from 'lib/Injector';
 
 function getCsrfToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');
@@ -21,11 +22,11 @@ function uploadFile(url, file, apiKey, onProgress) {
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve();
       } else {
-        reject(new Error(`Upload fehlgeschlagen (Status ${xhr.status})`));
+        reject(new Error(`Upload failed (status ${xhr.status})`));
       }
     });
-    xhr.addEventListener('error', () => reject(new Error('Netzwerkfehler beim Upload')));
-    xhr.addEventListener('abort', () => reject(new Error('Upload abgebrochen')));
+    xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
+    xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
     xhr.open('PUT', url);
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
     xhr.setRequestHeader('AccessKey', apiKey);
@@ -34,23 +35,28 @@ function uploadFile(url, file, apiKey, onProgress) {
 }
 
 const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, readOnly }) => {
-  const { endpoint, libraryId } = data || {};
+  const { endpoint, libraryId, searchEndpoint, cdnHostname } = data || {};
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const triggerFileInput = () => {
+    document.getElementById(`${id}_file`).click();
+  };
 
   const handleFileSelect = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     if (!file.type.startsWith('video/')) {
-      setStatus({ text: 'Bitte wählen Sie eine Video-Datei', type: 'error' });
+      setStatus({ text: 'Please select a video file', type: 'error' });
       return;
     }
 
     setUploading(true);
     setProgress(0);
-    setStatus({ text: 'Vorbereitung...', type: 'info' });
+    setStatus({ text: 'Preparing...', type: 'info' });
 
     try {
       const createRes = await fetch(endpoint, {
@@ -65,29 +71,34 @@ const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, read
 
       if (!createRes.ok) {
         const err = await createRes.json();
-        throw new Error(err.error || 'Fehler beim Erstellen des Videos');
+        throw new Error(err.error || 'Error creating video');
       }
 
       const { videoId, uploadUrl, apiKey } = await createRes.json();
 
-      setStatus({ text: 'Upload läuft...', type: 'info' });
+      setStatus({ text: 'Uploading...', type: 'info' });
       await uploadFile(uploadUrl, file, apiKey, setProgress);
 
       onChange(videoId);
-      setStatus({ text: 'Upload erfolgreich! Video wird verarbeitet...', type: 'success' });
+      setStatus({ text: 'Upload successful! Video is being processed...', type: 'success' });
     } catch (err) {
-      setStatus({ text: `Fehler: ${err.message}`, type: 'error' });
+      setStatus({ text: `Error: ${err.message}`, type: 'error' });
     } finally {
       setUploading(false);
     }
   };
 
-  const handleRemove = () => {
-    // eslint-disable-next-line no-alert
-    if (window.confirm('Video wirklich entfernen?')) {
-      onChange('');
+  const handleChooseExisting = (selectedData) => {
+    if (selectedData && selectedData.videoId) {
+      onChange(selectedData.videoId);
       setStatus(null);
     }
+    setModalOpen(false);
+  };
+
+  const handleRemove = () => {
+    onChange('');
+    setStatus(null);
   };
 
   if (readOnly) {
@@ -97,7 +108,7 @@ const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, read
     return (
       <div className="bunny-video-upload-field bunny-video-upload-field--readonly">
         <iframe
-          src={`https://iframe.mediadelivery.net/bunny/${libraryId}/${value}`}
+          src={`https://iframe.mediadelivery.net/embed/${libraryId}/${value}`}
           loading="lazy"
           style={{ border: 0, width: '100%', maxWidth: 640, aspectRatio: '16/9' }}
           allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
@@ -107,33 +118,53 @@ const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, read
     );
   }
 
+  const CmsModal = modalOpen ? loadComponent('CmsModal') : null;
+  const CmsModalSearch = modalOpen ? loadComponent('CmsModalSearch') : null;
+
   return (
     <div className="bunny-video-upload-field">
       <input type="hidden" name={name} id={id} value={value || ''} readOnly />
 
       {!value && (
-        <div className="upload-container">
+        <div className="uploadfield__dropzone">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+          <label htmlFor={`${id}_file`} className="uploadfield__backdrop" aria-hidden="true" />
+          <div className="uploadfield__droptext">
+            <button
+              type="button"
+              className="uploadfield__upload-button"
+              onClick={triggerFileInput}
+              disabled={uploading || disabled}
+            >
+              Upload new
+            </button>
+            {' '}or{' '}
+            <button
+              type="button"
+              className="uploadfield__add-button"
+              onClick={() => setModalOpen(true)}
+              disabled={uploading || disabled}
+            >
+              Choose existing
+            </button>
+          </div>
           <input
             type="file"
             id={`${id}_file`}
             accept="video/*"
-            className="bunny-file-input"
+            style={{ display: 'none' }}
             onChange={handleFileSelect}
             disabled={uploading || disabled}
           />
-          <label htmlFor={`${id}_file`} className="upload-button">
-            <span className="icon">📹</span>
-            <span className="text">Video auswählen</span>
-          </label>
         </div>
       )}
 
       {uploading && (
-        <div className="upload-progress">
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${progress}%` }} />
+        <div className="bunny-upload-progress">
+          <div className="bunny-progress-bar">
+            <div className="bunny-progress-fill" style={{ width: `${progress}%` }} />
           </div>
-          <div className="progress-text">{progress}%</div>
+          <div className="bunny-progress-text">{progress}%</div>
         </div>
       )}
 
@@ -144,25 +175,45 @@ const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, read
       )}
 
       {value && !uploading && (
-        <div className="current-video">
-          <div className="video-info">
-            <strong>Video ID:</strong> {value}
+        <div className="bunny-current-video">
+          <div className="bunny-item">
+            <div className="bunny-item__icon" />
+            <div className="bunny-item__title">{value}</div>
+            <button
+              type="button"
+              className="bunny-item__remove btn btn-secondary btn-sm"
+              onClick={handleRemove}
+            >
+              Remove video
+            </button>
           </div>
-          <iframe
-            src={`https://iframe.mediadelivery.net/embed/${libraryId}/${value}`}
-            loading="lazy"
-            style={{ border: 0, width: '100%', maxWidth: 640, aspectRatio: '16/9' }}
-            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-            allowFullScreen
-          />
-          <button
-            type="button"
-            className="remove-video btn btn-danger btn-sm"
-            onClick={handleRemove}
-          >
-            Video entfernen
-          </button>
+          <div className="bunny-video-preview">
+            <iframe
+              src={`https://iframe.mediadelivery.net/embed/${libraryId}/${value}`}
+              loading="lazy"
+              style={{ border: 0, width: '100%', aspectRatio: '16/9' }}
+              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
         </div>
+      )}
+
+      {modalOpen && CmsModal && CmsModalSearch && (
+        <CmsModal
+          title="Choose video"
+          size="lg"
+          onClose={() => setModalOpen(false)}
+        >
+          <CmsModalSearch
+            data={{
+              formEndpoint: `${window.location.origin}${window.silverstripeContext ? '/' + window.silverstripeContext : ''}/api/bunny/search-form`,
+              searchEndpoint: searchEndpoint || `${window.location.origin}${window.silverstripeContext ? '/' + window.silverstripeContext : ''}/api/bunny/search-results`,
+            }}
+            onSelect={handleChooseExisting}
+            onClose={() => setModalOpen(false)}
+          />
+        </CmsModal>
       )}
     </div>
   );
@@ -176,6 +227,8 @@ BunnyVideoUploadField.propTypes = {
   data: PropTypes.shape({
     endpoint: PropTypes.string,
     libraryId: PropTypes.string,
+    searchEndpoint: PropTypes.string,
+    cdnHostname: PropTypes.string,
   }),
   disabled: PropTypes.bool,
   readOnly: PropTypes.bool,

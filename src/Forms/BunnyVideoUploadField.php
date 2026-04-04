@@ -101,10 +101,64 @@ class BunnyVideoUploadField extends FormField
     {
         $data = parent::getSchemaDataDefaults();
 
-        $data['data']['endpoint'] = $this->getEndpoint();
-        $data['data']['libraryId'] = $this->libraryId;
+        $data['data']['endpoint']           = $this->getEndpoint();
+        $data['data']['libraryId']          = $this->libraryId;
+        $data['data']['searchFormEndpoint'] = Director::absoluteURL('api/bunny/search-form');
+        $data['data']['searchEndpoint']     = Director::absoluteURL('api/bunny/search-results');
+        $data['data']['cdnHostname']        = $this->getCdnHostname();
 
         return $data;
+    }
+
+    /**
+     * Returns the Bunny CDN pull-zone hostname for thumbnail URLs,
+     * e.g. "vz-d6fa3ce6-6c4.b-cdn.net".
+     *
+     * Checks BUNNY_CDN_HOSTNAME env var first (fastest, no API call),
+     * then falls back to fetching from the Bunny library API.
+     */
+    public function getCdnHostname(): string
+    {
+        $envHostname = Environment::getEnv('BUNNY_CDN_HOSTNAME');
+        if ($envHostname) {
+            return $envHostname;
+        }
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => "https://video.bunnycdn.com/library/{$this->libraryId}",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => [
+                'AccessKey: ' . $this->apiKey,
+                'Accept: application/json',
+            ],
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$response) {
+            return '';
+        }
+
+        $lib = json_decode($response, true) ?? [];
+
+        // Bunny API returns PullZone.Hostnames array
+        foreach ($lib['PullZone']['Hostnames'] ?? [] as $h) {
+            if (!empty($h['Value'])) {
+                return $h['Value'];
+            }
+        }
+        // Fallback: PullZone.Name + standard CDN suffix
+        if (!empty($lib['PullZone']['Name'])) {
+            return $lib['PullZone']['Name'] . '.b-cdn.net';
+        }
+        // Fallback: top-level PullZoneName field
+        if (!empty($lib['PullZoneName'])) {
+            return $lib['PullZoneName'] . '.b-cdn.net';
+        }
+
+        return '';
     }
 
     public function Type()
