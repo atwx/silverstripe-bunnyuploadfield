@@ -209,9 +209,9 @@ const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, read
             data={{
               formEndpoint: `${window.location.origin}${window.silverstripeContext ? '/' + window.silverstripeContext : ''}/api/bunny/search-form`,
               searchEndpoint: searchEndpoint || `${window.location.origin}${window.silverstripeContext ? '/' + window.silverstripeContext : ''}/api/bunny/search-results`,
+              autoSearch: true,
             }}
             onSelect={handleChooseExisting}
-            onClose={() => setModalOpen(false)}
           />
         </CmsModal>
       )}
