@@ -396,7 +396,21 @@ class BunnyAPIController extends Controller
         $items = $videosResponse['items'];
 
         // Build HTML results with data-cms-select attributes
-        $html = '<div class="bunny-search-results" data-cms-results-target>';
+        $html = '<style>'
+            . '.bunny-search-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }'
+            . '.bunny-result-item { cursor: pointer; border-radius: 8px; overflow: hidden; background: #1a1a2e; transition: transform 0.2s, box-shadow 0.2s; }'
+            . '.bunny-result-item:hover { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }'
+            . '.bunny-result-thumb { position: relative; aspect-ratio: 16/9; background: #1a1a2e; overflow: hidden; }'
+            . '.bunny-result-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }'
+            . '.bunny-hover-preview { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: none; }'
+            . '.bunny-result-item:hover .bunny-hover-preview { display: block; }'
+            . '@media (max-width: 992px) { .bunny-search-grid { grid-template-columns: repeat(2, 1fr); } }'
+            . '@media (max-width: 767px) { .bunny-search-grid { grid-template-columns: 1fr; } }'
+            . '.bunny-result-title { font-weight: 600; font-size: .85rem; margin-bottom: 4px; }'
+            . '.bunny-result-id { font-size: .7rem; color: #666; }'
+            . '</style>'
+            . '<div class="bunny-search-results" data-cms-results-target>'
+            . '<div class="bunny-search-grid">';
         foreach ($items as $video) {
             $videoId = htmlspecialchars($video['guid'] ?? '', ENT_QUOTES);
             $title = htmlspecialchars($video['title'] ?? 'Untitled', ENT_QUOTES);
@@ -405,15 +419,19 @@ class BunnyAPIController extends Controller
                 ? "https://{$cdnHostname}/{$videoId}/{$thumbnailFileName}"
                 : "https://video.bunnycdn.com/library/{$libraryId}/videos/{$videoId}/{$thumbnailFileName}";
 
+            // Hover preview iframe with autoplay muted
+            $previewSrc = "https://iframe.mediadelivery.net/embed/{$libraryId}/{$videoId}?autoplay=1&muted=true&controls=0&loop=true";
+
             $html .= '<div class="bunny-result-item" data-cms-select=\'{"videoId":"'.$videoId.'","title":"'.$title.'"}\'>'
-                . '<div class="bunny-result-thumb" style="position:relative;aspect-ratio:16/9;background:#1a1a2e;overflow:hidden;margin-bottom:8px;">'
-                . '<img src="'.$thumbnail.'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\';this.previousElementSibling.style.display=\'flex\';this.previousElementSibling.style.alignItems=\'center\';this.previousElementSibling.style.justifyContent=\'center\';this.previousElementSibling.style.fontSize=\'2rem\';this.previousElementSibling.style.color=\'#666\';this.previousElementSibling.textContent=\'Preview\';">'
+                . '<div class="bunny-result-thumb">'
+                . '<img src="'.$thumbnail.'" alt="'.$title.'" onerror="this.style.display=\'none\';this.previousElementSibling.style.display=\'flex\';this.previousElementSibling.style.alignItems=\'center\';this.previousElementSibling.style.justifyContent=\'center\';this.previousElementSibling.style.fontSize=\'2rem\';this.previousElementSibling.style.color=\'#666\';this.previousElementSibling.textContent=\'Preview\';">'
+                . '<iframe class="bunny-hover-preview" src="'.$previewSrc.'" allow="autoplay; encrypted-media; picture-in-picture" loading="lazy" frameborder="0"></iframe>'
                 . '</div>'
-                . '<div style="font-weight:600;font-size:.85rem;">'.$title.'</div>'
-                . '<div style="font-size:.7rem;color:#666;">'.substr($videoId, 0, 8).'...</div>'
+                . '<div class="bunny-result-title">'.$title.'</div>'
+                . '<div class="bunny-result-id">'.substr($videoId, 0, 8).'...</div>'
                 . '</div>';
         }
-        $html .= '</div>';
+        $html .= '</div></div>';
 
         return HTTPResponse::create()
             ->setStatusCode(200)
