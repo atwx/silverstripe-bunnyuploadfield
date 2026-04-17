@@ -19,6 +19,8 @@ class DBBunnyVideo extends DBText
         'ThumbnailURL' => 'Varchar',
         'VideoID' => 'Varchar',
         'Title' => 'Varchar',
+        'LibraryId' => 'Varchar',
+        'QueryParams' => 'Varchar',
     ];
 
     /**
@@ -45,6 +47,14 @@ class DBBunnyVideo extends DBText
     {
         $this->libraryId = $id;
         return $this;
+    }
+
+    /**
+     * Get library ID
+     */
+    public function getLibraryId()
+    {
+        return $this->libraryId;
     }
 
     /**
@@ -135,6 +145,24 @@ class DBBunnyVideo extends DBText
     {
         $data = $this->getVideoData();
         return (bool)($data['loop'] ?? $data['Loop'] ?? false);
+    }
+
+    /**
+     * Get query parameters for iframe URL
+     * Always includes all 4 parameters with true/false values
+     * 
+     * @return string Query parameters (without leading ?)
+     */
+    public function getQueryParams()
+    {
+        $params = [
+            'autoplay=' . ($this->getAutoplay() ? 'true' : 'false'),
+            'controls=' . ($this->getControls() ? 'true' : 'false'),
+            'muted=' . ($this->getMuted() ? 'true' : 'false'),
+            'loop=' . ($this->getLoop() ? 'true' : 'false'),
+        ];
+        
+        return implode('&', $params);
     }
 
     /**
