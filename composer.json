@@ -20,6 +20,14 @@
             "Atwx\\BunnyUploadField\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Atwx\\BunnyUploadField\\Tests\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11"
+    },
     "extra": {
         "expose": [
             "client/dist"

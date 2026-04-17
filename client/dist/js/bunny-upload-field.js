@@ -1,218 +1,192 @@
 /**
- * Bunny Video Upload Field
- * Handles direct browser-to-CDN uploads
+ * BunnyVideoUploadField - SilverStripe React Component
+ *
+ * Registers with the SilverStripe JavaScript Injector so the CMS admin
+ * can render this as a custom schema form field.
+ *
+ * `Injector` and `React` are globals exposed by silverstripe/admin's bundle.js
+ * and vendor.js respectively - no webpack build needed.
  */
+(function () {
+    'use strict';
 
-class BunnyVideoUploadField {
-    constructor(container) {
-        this.container = container;
-        this.fileInput = container.querySelector('.bunny-file-input');
-        this.hiddenInput = container.querySelector('.bunny-video-id-input');
-        this.progressContainer = container.querySelector('.upload-progress');
-        this.progressFill = container.querySelector('.progress-fill');
-        this.progressText = container.querySelector('.progress-text');
-        this.statusDiv = container.querySelector('.upload-status');
-        this.removeBtn = container.querySelector('.remove-video');
+    var h = React.createElement;
+    var useState = React.useState;
 
-        this.endpoint = container.dataset.endpoint;
-        this.libraryId = container.dataset.libraryId;
+    function BunnyVideoUploadField(props) {
+        var data = props.data || {};
+        var endpoint = data.endpoint || '';
+        var libraryId = data.libraryId || '';
 
-        this.init();
-    }
+        var _value = useState(props.value || '');
+        var videoId = _value[0];
+        var setVideoId = _value[1];
 
-    init() {
-        if (this.fileInput) {
-            this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        var _status = useState(null);
+        var status = _status[0];
+        var setStatus = _status[1];
+
+        var _progress = useState(0);
+        var progress = _progress[0];
+        var setProgress = _progress[1];
+
+        var _uploading = useState(false);
+        var uploading = _uploading[0];
+        var setUploading = _uploading[1];
+
+        function notifyChange(newValue) {
+            setVideoId(newValue);
+            if (typeof props.onChange === 'function') {
+                props.onChange({ target: { value: newValue, name: props.name } });
+            }
         }
 
-        if (this.removeBtn) {
-            this.removeBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.removeVideo();
-            });
-        }
-    }
-
-    async handleFileSelect(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        // Validate file type
-        if (!file.type.startsWith('video/')) {
-            this.setStatus('Bitte wählen Sie eine Video-Datei', 'error');
-            return;
+        function getCsrfToken() {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            if (meta) return meta.getAttribute('content');
+            var field = document.querySelector('input[name="SecurityID"]');
+            if (field) return field.value;
+            return '';
         }
 
-        // Validate file size (optional, e.g., 5GB limit)
-        const maxSize = 5 * 1024 * 1024 * 1024; // 5GB
-        if (file.size > maxSize) {
-            this.setStatus('Video ist zu groß (max. 5GB)', 'error');
-            return;
-        }
+        function handleFileChange(e) {
+            var file = e.target.files[0];
+            if (!file) return;
 
-        this.showProgress();
-        this.setStatus('Vorbereitung...', 'info');
-
-        try {
-            // Step 1: Create video entry in Bunny
-            const createResponse = await this.createVideo(file.name);
-
-            if (!createResponse.ok) {
-                const error = await createResponse.json();
-                throw new Error(error.error || 'Fehler beim Erstellen des Videos');
+            if (!file.type.startsWith('video/')) {
+                setStatus({ message: 'Bitte wählen Sie eine Video-Datei', type: 'error' });
+                return;
             }
 
-            const { videoId, uploadUrl, apiKey } = await createResponse.json();
+            var maxSize = 5 * 1024 * 1024 * 1024; // 5 GB
+            if (file.size > maxSize) {
+                setStatus({ message: 'Video ist zu groß (max. 5GB)', type: 'error' });
+                return;
+            }
 
-            // Step 2: Upload file directly to Bunny
-            this.setStatus('Upload läuft...', 'info');
+            setUploading(true);
+            setProgress(0);
+            setStatus({ message: 'Vorbereitung...', type: 'info' });
 
-            await this.uploadFile(uploadUrl, file, apiKey);
-
-            // Step 3: Update hidden field and reload
-            this.hiddenInput.value = videoId;
-            this.setStatus('Upload erfolgreich! Video wird verarbeitet...', 'success');
-            this.hideProgress();
-
-            // Reload page to show preview after 2 seconds
-            // setTimeout(() => {
-            //     window.location.reload();
-            // }, 2000);
-
-        } catch (error) {
-            console.error('Upload error:', error);
-            this.setStatus('Fehler: ' + error.message, 'error');
-            this.hideProgress();
-        }
-    }
-
-    async createVideo(filename) {
-        const csrfToken = this.getCsrfToken();
-
-        return fetch(this.endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-Token': csrfToken
-            },
-            body: JSON.stringify({
-                title: filename,
-                libraryId: this.libraryId
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': getCsrfToken()
+                },
+                body: JSON.stringify({ title: file.name, libraryId: libraryId })
             })
-        });
-    }
+                .then(function (response) {
+                    if (!response.ok) {
+                        return response.json().then(function (err) {
+                            throw new Error(err.error || 'Fehler beim Erstellen des Videos');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(function (result) {
+                    setStatus({ message: 'Upload läuft...', type: 'info' });
 
-    uploadFile(url, file, apiKey) {
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
+                    return new Promise(function (resolve, reject) {
+                        var xhr = new XMLHttpRequest();
 
-            // Track upload progress
-            xhr.upload.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    const percentComplete = (e.loaded / e.total) * 100;
-                    this.updateProgress(percentComplete);
-                }
-            });
+                        xhr.upload.addEventListener('progress', function (e) {
+                            if (e.lengthComputable) {
+                                setProgress(Math.round((e.loaded / e.total) * 100));
+                            }
+                        });
 
-            xhr.addEventListener('load', () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    resolve({ ok: true });
-                } else {
-                    reject(new Error('Upload failed with status ' + xhr.status));
-                }
-            });
+                        xhr.addEventListener('load', function () {
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                resolve(result.videoId);
+                            } else {
+                                reject(new Error('Upload fehlgeschlagen: ' + xhr.status));
+                            }
+                        });
 
-            xhr.addEventListener('error', () => {
-                reject(new Error('Network error during upload'));
-            });
+                        xhr.addEventListener('error', function () {
+                            reject(new Error('Netzwerkfehler beim Upload'));
+                        });
 
-            xhr.addEventListener('abort', () => {
-                reject(new Error('Upload was cancelled'));
-            });
-
-            xhr.open('PUT', url);
-            xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-            xhr.setRequestHeader('AccessKey', apiKey);
-            xhr.send(file);
-        });
-    }
-
-    updateProgress(percent) {
-        const rounded = Math.round(percent);
-        this.progressFill.style.width = rounded + '%';
-        this.progressText.textContent = rounded + '%';
-    }
-
-    showProgress() {
-        if (this.progressContainer) {
-            this.progressContainer.style.display = 'block';
+                        xhr.open('PUT', result.uploadUrl);
+                        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+                        xhr.send(file);
+                    });
+                })
+                .then(function (newVideoId) {
+                    notifyChange(newVideoId);
+                    setStatus({ message: 'Upload erfolgreich! Video wird verarbeitet...', type: 'success' });
+                    setUploading(false);
+                })
+                .catch(function (err) {
+                    setStatus({ message: 'Fehler: ' + err.message, type: 'error' });
+                    setUploading(false);
+                });
         }
-    }
 
-    hideProgress() {
-        if (this.progressContainer) {
-            setTimeout(() => {
-                this.progressContainer.style.display = 'none';
-                this.progressFill.style.width = '0%';
-                this.progressText.textContent = '0%';
-            }, 1000);
-        }
-    }
-
-    setStatus(message, type) {
-        if (this.statusDiv) {
-            this.statusDiv.textContent = message;
-            this.statusDiv.className = 'upload-status upload-status--' + type;
-            this.statusDiv.style.display = 'block';
-        }
-    }
-
-    removeVideo() {
-        if (confirm('Video wirklich entfernen?')) {
-            this.hiddenInput.value = '';
-
-            // Submit form or reload
-            const form = this.container.closest('form');
-            if (form) {
-                form.submit();
-            } else {
-                window.location.reload();
+        function handleRemove(e) {
+            e.preventDefault();
+            if (confirm('Video wirklich entfernen?')) {
+                notifyChange('');
+                setStatus(null);
             }
         }
-    }
 
-    getCsrfToken() {
-        // Try to get CSRF token from meta tag
-        const tokenMeta = document.querySelector('meta[name="csrf-token"]');
-        if (tokenMeta) {
-            return tokenMeta.getAttribute('content');
+        var children = [];
+
+        // Status message
+        if (status) {
+            children.push(h('div', {
+                key: 'status',
+                className: 'upload-status upload-status--' + status.type
+            }, status.message));
         }
 
-        // Try to get from SecurityID field
-        const securityField = document.querySelector('input[name="SecurityID"]');
-        if (securityField) {
-            return securityField.value;
+        // Existing video or upload input
+        if (videoId) {
+            children.push(h('div', { key: 'current', className: 'bunny-video-current' },
+                h('p', { className: 'bunny-video-id' },
+                    h('strong', null, 'Video ID: '), videoId
+                ),
+                h('button', {
+                    type: 'button',
+                    className: 'btn btn-danger btn-sm mt-1',
+                    onClick: handleRemove
+                }, 'Video entfernen')
+            ));
+        } else {
+            children.push(h('div', { key: 'upload', className: 'bunny-upload-area' },
+                h('input', {
+                    type: 'file',
+                    accept: 'video/*',
+                    onChange: handleFileChange,
+                    disabled: uploading,
+                    className: 'form-control bunny-file-input'
+                })
+            ));
         }
 
-        return '';
+        // Progress bar (Bootstrap-compatible)
+        if (uploading) {
+            children.push(h('div', { key: 'progress', className: 'upload-progress mt-2' },
+                h('div', { className: 'progress' },
+                    h('div', {
+                        className: 'progress-bar',
+                        role: 'progressbar',
+                        style: { width: progress + '%' },
+                        'aria-valuenow': progress,
+                        'aria-valuemin': 0,
+                        'aria-valuemax': 100
+                    }, progress + '%')
+                )
+            ));
+        }
+
+        return h('div', { className: 'bunny-video-upload-field' }, children);
     }
-}
 
-// Auto-initialize all fields when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeFields);
-} else {
-    initializeFields();
-}
+    // Register with SilverStripe's Injector.
+    // `Injector` is a global set by silverstripe/admin's bundle.js before this script runs.
+    Injector.component.register('BunnyVideoUploadField', BunnyVideoUploadField);
 
-function initializeFields() {
-    document.querySelectorAll('.bunny-video-upload-field').forEach(container => {
-        new BunnyVideoUploadField(container);
-    });
-}
-
-// Export for use in other scripts if needed
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = BunnyVideoUploadField;
-}
+}());
