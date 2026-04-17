@@ -1,94 +1,14 @@
 /**
  * Bunny Video Upload Field Styles
+ * Drop zone uses native SilverStripe uploadfield classes from the admin bundle.
  */
 
-.bunny-video-upload-field {
-    margin: 1rem 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-}
-
-.bunny-video-upload-field .upload-container {
-    border: 2px dashed #ddd;
-    border-radius: 8px;
-    padding: 2rem;
-    text-align: center;
-    background: #fafafa;
-    transition: all 0.3s ease;
-}
-
-.bunny-video-upload-field .upload-container:hover {
-    border-color: #0070f3;
-    background: #f5f9ff;
-}
-
-/* File input (hidden) */
-.bunny-video-upload-field .bunny-file-input {
-    display: none;
-}
-
-/* Upload button */
-.bunny-video-upload-field .upload-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 1rem 2rem;
-    background: linear-gradient(135deg, #0070f3 0%, #00a8ff 100%);
-    color: white;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 112, 243, 0.3);
-}
-
-.bunny-video-upload-field .upload-button:hover {
-    background: linear-gradient(135deg, #0051cc 0%, #0080d6 100%);
-    box-shadow: 0 4px 12px rgba(0, 112, 243, 0.4);
-    transform: translateY(-2px);
-}
-
-.bunny-video-upload-field .upload-button .icon {
-    font-size: 1.5rem;
-}
-
-/* Progress bar */
-.bunny-video-upload-field .upload-progress {
-    margin-top: 1.5rem;
-    padding: 0 1rem;
-}
-
-.bunny-video-upload-field .progress-bar {
-    width: 100%;
-    height: 30px;
-    background: #e9ecef;
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.bunny-video-upload-field .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #0070f3 0%, #00c9ff 100%);
-    transition: width 0.3s ease;
-    border-radius: 15px;
-    box-shadow: 0 2px 4px rgba(0, 112, 243, 0.3);
-}
-
-.bunny-video-upload-field .progress-text {
-    margin-top: 0.5rem;
-    font-weight: 600;
-    font-size: 1.1rem;
-    color: #333;
-}
-
-/* Upload status messages */
+/* ─── Status messages ─── */
 .bunny-video-upload-field .upload-status {
-    margin-top: 1rem;
-    padding: 0.75rem 1rem;
-    border-radius: 6px;
-    font-weight: 500;
-    display: none;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
 }
 
 .bunny-video-upload-field .upload-status--info {
@@ -109,88 +29,84 @@
     border: 1px solid #ef5350;
 }
 
-/* Current video display */
-.bunny-video-upload-field .current-video {
-    margin-top: 1.5rem;
-    padding: 1.5rem;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+/* ─── Progress bar ─── */
+.bunny-video-upload-field .bunny-upload-progress {
+    margin-top: 0.5rem;
 }
 
-.bunny-video-upload-field .video-info {
-    margin-bottom: 1rem;
-    padding: 0.75rem;
-    background: #f8f9fa;
-    border-radius: 4px;
-    text-align: left;
-    font-size: 0.9rem;
-    word-break: break-all;
-}
-
-.bunny-video-upload-field .video-preview {
-    margin-bottom: 1rem;
-    border-radius: 8px;
+.bunny-video-upload-field .bunny-progress-bar {
+    width: 100%;
+    height: 16px;
+    background: #e9ecef;
+    border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.bunny-video-upload-field .video-preview iframe {
+.bunny-video-upload-field .bunny-progress-fill {
+    height: 100%;
+    background: #0071c4;
+    transition: width 0.3s ease;
+}
+
+.bunny-video-upload-field .bunny-progress-text {
+    margin-top: 0.25rem;
+    font-size: 0.85rem;
+    color: #555;
+}
+
+/* ─── Existing video row (mimics uploadfield-item layout) ─── */
+.bunny-video-upload-field .bunny-item {
+    display: flex;
+    align-items: center;
+    position: relative;
+    margin: 0;
+    background-color: #fff;
+    border: 1px solid rgb(206, 213, 225);
+    border-radius: 3px 3px 0 0;
+    height: 61px;
+    box-sizing: border-box;
+}
+
+.bunny-video-upload-field .bunny-item__icon {
+    flex: 0 0 60px;
+    height: 60px;
+    background: #fff url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFwAAABcCAYAAADj79JYAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAjFJREFUeNrs3UFOwkAUxvFi2MMN9Abq3kRuoDegC/eyZmPduLXuSYATiCegJOzFE1huQE+Ar+E1BBITF/I60/l/yYTEhW1+TvoN00lsbbfbiNjlDALAASeAA04AB5wADjjgBHDACeCAE8ABB5wADjgBHHBSpV3XhW8eXjL5uJXxJWOwHA2zEMBbdRyTEOyefMyPfryQEQt8ziPFJuVs/5Y/xkTGBeB26ctYCXoiowu4TToynmTkgh4Dbgs/FvRcn/uAG+W8LNlyZSPjCnDbYv30uVh9/eLT1xWNd8Xq+zfNqlgHgNsW66sW6z3gtsX6rsXaA9y2WOeuFmuTdwurYk1dKtYQtmcftVgTwI23CrRYY8Bti3VcZ7GG+sanKtaZdbGG/ortLtrvwXcBt13R5BZbBYAfFWu0e/kRA25frKtTbAUD/nsuZaSA24YZbpwB4DYpz8hcL0fDyX//4ja2B1lHu8NI2akuAPgeOjnFjAb8MIWuRFLB3lhcMGTwabQ7RLqxvGiI4LUeGg0J3Ilj0SGAmxVi6OCFlmHi0k01FfxNZ/XGtRtrGviHPqdzV2+wKeALndGZ6zfqO7hThdhk8EKhU99u3EfwZ8uv4iGDT3VW55HH8QHcm0L0HXytS7xZk9atLoIXCj2JGpi2Y9Cme9Mhga8UuNOkQvxLWnX9Dwg9RFmOPATo2sFDDcckAAecAA44ARxwAjjggBPAASeAA04ABxxwAjjgBHDACeB15UeAAQBIj8DeaiiktQAAAABJRU5ErkJggg==") center center no-repeat;
+}
+
+.bunny-video-upload-field .bunny-item__title {
+    flex: 1 1 auto;
+    padding: 0 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.bunny-video-upload-field .bunny-item__remove {
+    flex: 0 0 auto;
+    margin-right: 8px;
+}
+
+/* ─── Video preview iframe ─── */
+.bunny-video-upload-field .bunny-video-preview {
+    border: 1px solid rgb(206, 213, 225);
+    border-top: 0;
+    border-radius: 0 0 3px 3px;
+    overflow: hidden;
+}
+
+.bunny-video-upload-field .bunny-video-preview iframe {
     display: block;
     width: 100%;
-    max-width: 100%;
-    aspect-ratio: 16/9;
+    max-width: 640px;
+    aspect-ratio: 16 / 9;
+    border: 0;
 }
 
-.bunny-video-upload-field .remove-video {
-    padding: 0.75rem 1.5rem;
-    background: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
-}
-
-.bunny-video-upload-field .remove-video:hover {
-    background: #c82333;
-    box-shadow: 0 4px 10px rgba(220, 53, 69, 0.4);
-    transform: translateY(-2px);
-}
-
-/* Hidden input */
-.bunny-video-upload-field .bunny-video-id-input {
-    /* Already handled by SilverStripe but keeping for consistency */
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .bunny-video-upload-field .upload-container {
-        padding: 1.5rem 1rem;
-    }
-    
-    .bunny-video-upload-field .upload-button {
-        padding: 0.75rem 1.5rem;
-        font-size: 0.9rem;
-    }
-    
-    .bunny-video-upload-field .current-video {
-        padding: 1rem;
-    }
-}
-
-/* Loading animation */
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.5;
-    }
-}
-
-.bunny-video-upload-field .upload-status--info {
-    animation: pulse 2s ease-in-out infinite;
+/* ─── "Choose existing" disabled state ─── */
+.bunny-video-upload-field .uploadfield__add-button[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
 }
