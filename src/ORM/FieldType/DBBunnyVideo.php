@@ -2,21 +2,23 @@
 
 namespace Atwx\BunnyUploadField\ORM\FieldType;
 
-use SilverStripe\ORM\FieldType\DBVarchar;
+use SilverStripe\ORM\FieldType\DBText;
 use SilverStripe\Core\Environment;
-use SilverStripe\View\ArrayData;
-use SilverStripe\ORM\FieldType\DBHTMLText;
+use SilverStripe\Model\ModelData;
 
 /**
- * Database field for storing Bunny video IDs
- * Provides helper methods for embedding videos
+ * Database field for storing complete Bunny video JSON data
+ * Stores the full video object from Bunny Stream API as JSON
+ * Provides helper methods for accessing video properties and embedding videos
  */
-class DBBunnyVideo extends DBVarchar
+class DBBunnyVideo extends DBText
 {
     private static $casting = [
         'EmbedHTML' => 'HTMLFragment',
         'EmbedURL' => 'Varchar',
-        'ThumbnailURL' => 'Varchar'
+        'ThumbnailURL' => 'Varchar',
+        'VideoID' => 'Varchar',
+        'Title' => 'Varchar',
     ];
 
     /**
@@ -25,9 +27,14 @@ class DBBunnyVideo extends DBVarchar
      */
     protected $libraryId;
 
+    /**
+     * Cached decoded JSON data
+     */
+    protected $videoData = null;
+
     public function __construct($name = null, $options = [])
     {
-        parent::__construct($name, 255, $options);
+        parent::__construct($name, $options);
         $this->libraryId = Environment::getEnv('BUNNY_LIBRARY_ID');
     }
 
@@ -41,20 +48,111 @@ class DBBunnyVideo extends DBVarchar
     }
 
     /**
+     * Get the decoded video data from JSON
+     * 
+     * @return array|null
+     */
+    protected function getVideoData()
+    {
+        if ($this->videoData === null && !empty($this->value)) {
+            $decoded = json_decode($this->value, true);
+            $this->videoData = is_array($decoded) ? $decoded : [];
+        }
+        return $this->videoData ?? [];
+    }
+
+    /**
+     * Set video data from array or JSON string
+     * 
+     * @param array|string $data
+     * @return $this
+     */
+    public function setVideoData($data)
+    {
+        if (is_string($data)) {
+            $this->value = $data;
+            $this->videoData = json_decode($data, true);
+        } elseif (is_array($data)) {
+            $this->value = json_encode($data);
+            $this->videoData = $data;
+        } else {
+            $this->value = '';
+            $this->videoData = [];
+        }
+        return $this;
+    }
+
+    /**
+     * Get video ID (guid from Bunny)
+     */
+    public function getVideoID()
+    {
+        $data = $this->getVideoData();
+        return $data['guid'] ?? $data['videoId'] ?? $data['VideoID'] ?? '';
+    }
+
+    /**
+     * Get video title
+     */
+    public function getTitle()
+    {
+        $data = $this->getVideoData();
+        return $data['title'] ?? '';
+    }
+
+    /**
+     * Get autoplay setting
+     */
+    public function getAutoplay()
+    {
+        $data = $this->getVideoData();
+        return (bool)($data['autoplay'] ?? $data['Autoplay'] ?? false);
+    }
+
+    /**
+     * Get controls setting
+     */
+    public function getControls()
+    {
+        $data = $this->getVideoData();
+        return isset($data['controls']) ? (bool)$data['controls'] : 
+               (isset($data['Controls']) ? (bool)$data['Controls'] : true);
+    }
+
+    /**
+     * Get muted setting
+     */
+    public function getMuted()
+    {
+        $data = $this->getVideoData();
+        return (bool)($data['muted'] ?? $data['Muted'] ?? false);
+    }
+
+    /**
+     * Get loop setting
+     */
+    public function getLoop()
+    {
+        $data = $this->getVideoData();
+        return (bool)($data['loop'] ?? $data['Loop'] ?? false);
+    }
+
+    /**
      * Get the embed URL for this video
      *
      * @return string|null
      */
     public function getEmbedURL()
     {
-        if (!$this->value || !$this->libraryId) {
+        $videoId = $this->getVideoID();
+        if (!$videoId || !$this->libraryId) {
             return null;
         }
 
         return sprintf(
             'https://iframe.mediadelivery.net/embed/%s/%s',
             $this->libraryId,
-            $this->value
+            $videoId
         );
     }
 
@@ -65,35 +163,36 @@ class DBBunnyVideo extends DBVarchar
      */
     public function getThumbnailURL()
     {
-        if (!$this->value || !$this->libraryId) {
+        $videoId = $this->getVideoID();
+        if (!$videoId || !$this->libraryId) {
             return null;
         }
 
         return sprintf(
             'https://vz-%s.b-cdn.net/%s/thumbnail.jpg',
             $this->libraryId,
-            $this->value
+            $videoId
         );
     }
 
     /**
      * Get embed HTML for this video
      *
-     * @param int $width Width in pixels or percentage
+     * @param int|string $width Width in pixels or percentage
      * @param int $height Height in pixels
-     * @param bool $autoplay Auto-play video
-     * @param bool $controls Show controls (default true)
-     * @param bool $muted Start muted
-     * @param bool $loop Loop video
+     * @param bool|null $autoplay Auto-play video (null = use stored value)
+     * @param bool|null $controls Show controls (null = use stored value)
+     * @param bool|null $muted Start muted (null = use stored value)
+     * @param bool|null $loop Loop video (null = use stored value)
      * @return string|null
      */
     public function getEmbedHTML(
         $width = '100%',
         $height = 360,
-        $autoplay = false,
-        $controls = true,
-        $muted = false,
-        $loop = false
+        $autoplay = null,
+        $controls = null,
+        $muted = null,
+        $loop = null
     ) {
         $url = $this->getEmbedURL();
 
@@ -101,12 +200,18 @@ class DBBunnyVideo extends DBVarchar
             return null;
         }
 
+        // Use stored values if not explicitly provided
+        $autoplay = $autoplay ?? $this->getAutoplay();
+        $controls = $controls ?? $this->getControls();
+        $muted = $muted ?? $this->getMuted();
+        $loop = $loop ?? $this->getLoop();
+
         // Add query parameters
         $params = [];
-        if ($autoplay) $params[] = 'autoplay=true';
-        if (!$controls) $params[] = 'controls=false';
-        if ($muted) $params[] = 'muted=true';
-        if ($loop) $params[] = 'loop=true';
+        $params[] = $autoplay ? 'autoplay=true' : 'autoplay=false';
+        $params[] = $controls ? 'controls=true' : 'controls=false';
+        $params[] = $muted ? 'muted=true' : 'muted=false';
+        $params[] = $loop ? 'loop=true' : 'loop=false';
 
         if (!empty($params)) {
             $url .= '?' . implode('&', $params);
@@ -140,7 +245,7 @@ class DBBunnyVideo extends DBVarchar
      */
     public function forTemplate(): string
     {
-        return $this->getEmbedHTML() ?? '';
+        return $this->renderWith('Atwx\BunnyUploadField\ORM\FieldType\DBBunnyVideo');
     }
 
     /**
@@ -150,6 +255,44 @@ class DBBunnyVideo extends DBVarchar
      */
     public function exists(): bool
     {
-        return !empty($this->value);
+        return !empty($this->getVideoID());
+    }
+
+    /**
+     * Set value - accepts JSON string or array
+     *
+     * @param mixed $value
+     * @param ModelData|array|null $record
+     * @param bool $markChanged
+     * @return static
+     */
+    public function setValue(mixed $value, ModelData|array|null $record = null, bool $markChanged = true): static
+    {
+        if (is_string($value)) {
+            // If it's a JSON string, store it directly
+            if (!empty($value) && ($value[0] === '{' || $value[0] === '[')) {
+                $this->value = $value;
+                $this->videoData = null; // Reset cache
+            }
+            // If it's just a video ID, create minimal JSON
+            elseif (!empty($value)) {
+                $this->setVideoData(['guid' => $value]);
+            } else {
+                $this->value = '';
+                $this->videoData = null;
+            }
+        } elseif (is_array($value)) {
+            // Store array as JSON
+            $this->setVideoData($value);
+        } else {
+            $this->value = '';
+            $this->videoData = null;
+        }
+
+        if ($markChanged) {
+            $this->isChanged = true;
+        }
+
+        return $this;
     }
 }

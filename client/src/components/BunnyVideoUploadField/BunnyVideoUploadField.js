@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import fieldHolder from 'components/FieldHolder/FieldHolder';
 import { loadComponent } from 'lib/Injector';
@@ -40,6 +40,55 @@ const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, read
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [autoplay, setAutoplay] = useState(data?.autoplay || false);
+  const [controls, setControls] = useState(data?.controls !== undefined ? data.controls : true);
+  const [muted, setMuted] = useState(data?.muted || false);
+  const [loop, setLoop] = useState(data?.loop || false);
+
+  // Extract video ID from value (might be JSON string or plain video ID)
+  const getVideoId = () => {
+    if (!value) return '';
+    // If it's JSON, parse it
+    if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+      try {
+        const parsed = JSON.parse(value);
+        return parsed.guid || parsed.VideoID || parsed.videoId || '';
+      } catch (e) {
+        return value;
+      }
+    }
+    return value;
+  };
+
+  const videoId = getVideoId();
+
+  // Create JSON value from current state
+  const createJsonValue = (vid) => {
+    if (!vid) return '';
+    
+    return JSON.stringify({
+      guid: vid,
+      VideoID: vid,
+      autoplay: autoplay,
+      controls: controls,
+      muted: muted,
+      loop: loop,
+    });
+  };
+
+  // Update the parent form whenever settings change
+  const updateValue = (vid) => {
+    const jsonValue = createJsonValue(vid || videoId);
+    onChange(jsonValue);
+  };
+
+  // Automatically update value when checkbox settings change
+  useEffect(() => {
+    if (videoId) {
+      updateValue(videoId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoplay, controls, muted, loop]);
 
   const triggerFileInput = () => {
     document.getElementById(`${id}_file`).click();
@@ -79,7 +128,16 @@ const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, read
       setStatus({ text: 'Uploading...', type: 'info' });
       await uploadFile(uploadUrl, file, apiKey, setProgress);
 
-      onChange(videoId);
+      // Create JSON with video ID and default settings
+      const jsonValue = JSON.stringify({
+        guid: videoId,
+        VideoID: videoId,
+        autoplay: false,
+        controls: true,
+        muted: false,
+        loop: false,
+      });
+      onChange(jsonValue);
       setStatus({ text: 'Upload successful! Video is being processed...', type: 'success' });
     } catch (err) {
       setStatus({ text: `Error: ${err.message}`, type: 'error' });
@@ -90,7 +148,15 @@ const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, read
 
   const handleChooseExisting = (selectedData) => {
     if (selectedData && selectedData.videoId) {
-      onChange(selectedData.videoId);
+      const jsonValue = JSON.stringify({
+        guid: selectedData.videoId,
+        VideoID: selectedData.videoId,
+        autoplay: autoplay,
+        controls: controls,
+        muted: muted,
+        loop: loop,
+      });
+      onChange(jsonValue);
       setStatus(null);
     }
     setModalOpen(false);
@@ -102,13 +168,13 @@ const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, read
   };
 
   if (readOnly) {
-    if (!value) {
+    if (!videoId) {
       return <span className="bunny-video-upload-field--empty">—</span>;
     }
     return (
       <div className="bunny-video-upload-field bunny-video-upload-field--readonly">
         <iframe
-          src={`https://iframe.mediadelivery.net/embed/${libraryId}/${value}`}
+          src={`https://iframe.mediadelivery.net/embed/${libraryId}/${videoId}`}
           loading="lazy"
           style={{ border: 0, width: '100%', maxWidth: 640, aspectRatio: '16/9' }}
           allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
@@ -125,7 +191,7 @@ const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, read
     <div className="bunny-video-upload-field">
       <input type="hidden" name={name} id={id} value={value || ''} readOnly />
 
-      {!value && (
+      {!videoId && (
         <div className="uploadfield__dropzone">
           {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
           <label htmlFor={`${id}_file`} className="uploadfield__backdrop" aria-hidden="true" />
@@ -174,11 +240,11 @@ const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, read
         </div>
       )}
 
-      {value && !uploading && (
+      {videoId && !uploading && (
         <div className="bunny-current-video">
           <div className="bunny-item">
             <div className="bunny-item__icon" />
-            <div className="bunny-item__title">{value}</div>
+            <div className="bunny-item__title">{videoId}</div>
             <button
               type="button"
               className="bunny-item__remove btn btn-secondary btn-sm"
@@ -189,12 +255,50 @@ const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, read
           </div>
           <div className="bunny-video-preview">
             <iframe
-              src={`https://iframe.mediadelivery.net/embed/${libraryId}/${value}`}
+              src={`https://iframe.mediadelivery.net/embed/${libraryId}/${videoId}`}
               loading="lazy"
               style={{ border: 0, width: '100%', aspectRatio: '16/9' }}
               allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
               allowFullScreen
             />
+          </div>
+          <div className="bunny-video-settings">
+            <label className="bunny-setting-checkbox">
+              <input
+                type="checkbox"
+                checked={autoplay}
+                onChange={(e) => setAutoplay(e.target.checked)}
+                disabled={disabled}
+              />
+              {' '}Autoplay
+            </label>
+            <label className="bunny-setting-checkbox">
+              <input
+                type="checkbox"
+                checked={controls}
+                onChange={(e) => setControls(e.target.checked)}
+                disabled={disabled}
+              />
+              {' '}Controls
+            </label>
+            <label className="bunny-setting-checkbox">
+              <input
+                type="checkbox"
+                checked={muted}
+                onChange={(e) => setMuted(e.target.checked)}
+                disabled={disabled}
+              />
+              {' '}Muted
+            </label>
+            <label className="bunny-setting-checkbox">
+              <input
+                type="checkbox"
+                checked={loop}
+                onChange={(e) => setLoop(e.target.checked)}
+                disabled={disabled}
+              />
+              {' '}Loop
+            </label>
           </div>
         </div>
       )}

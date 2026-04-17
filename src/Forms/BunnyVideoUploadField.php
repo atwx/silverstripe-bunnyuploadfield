@@ -94,12 +94,81 @@ class BunnyVideoUploadField extends FormField
     {
         $state = parent::getSchemaStateDefaults();
         
+        // Get the stored JSON data
+        $jsonValue = $this->value;
+        $videoData = [];
+        $videoId = '';
+        $autoplay = false;
+        $controls = true;
+        $muted = false;
+        $loop = false;
+        
+        if (!empty($jsonValue)) {
+            $decoded = json_decode($jsonValue, true);
+            if (is_array($decoded)) {
+                $videoData = $decoded;
+                $videoId = $decoded['guid'] ?? $decoded['videoId'] ?? $decoded['VideoID'] ?? '';
+                $autoplay = (bool)($decoded['autoplay'] ?? $decoded['Autoplay'] ?? false);
+                $controls = isset($decoded['controls']) ? (bool)$decoded['controls'] : 
+                           (isset($decoded['Controls']) ? (bool)$decoded['Controls'] : true);
+                $muted = (bool)($decoded['muted'] ?? $decoded['Muted'] ?? false);
+                $loop = (bool)($decoded['loop'] ?? $decoded['Loop'] ?? false);
+            }
+        }
+        
+        // Pass video ID as value for the React component
+        $state['value'] = $videoId;
         $state['data'] = [
             'endpoint' => Director::absoluteURL('api/bunny/create-video'),
             'libraryId' => $this->libraryId,
+            'autoplay' => $autoplay,
+            'controls' => $controls,
+            'muted' => $muted,
+            'loop' => $loop,
         ];
         
         return $state;
+    }
+
+    /**
+     * Save the JSON data into the record
+     */
+    public function saveInto(\SilverStripe\ORM\DataObjectInterface $record)
+    {
+        $fieldName = $this->getName();
+        $value = $this->value;
+        
+        // Store the JSON string in the field
+        $record->$fieldName = $value;
+    }
+
+    /**
+     * Set submitted value from form
+     */
+    public function setSubmittedValue($value, $data = null)
+    {
+        // The value should now already be JSON from the React component
+        if (is_string($value) && !empty($value)) {
+            // Check if it's JSON
+            if ($value[0] === '{' || $value[0] === '[') {
+                $this->value = $value;
+            } else {
+                // Fallback: treat as video ID and create minimal JSON
+                $videoData = [
+                    'guid' => $value,
+                    'VideoID' => $value,
+                    'autoplay' => false,
+                    'controls' => true,
+                    'muted' => false,
+                    'loop' => false,
+                ];
+                $this->value = json_encode($videoData);
+            }
+        } else {
+            $this->value = '';
+        }
+        
+        return $this;
     }
     
     public function Type()

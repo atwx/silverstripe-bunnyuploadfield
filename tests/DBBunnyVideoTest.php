@@ -14,7 +14,12 @@ class DBBunnyVideoTest extends SapphireTest
         $field = new DBBunnyVideo('VideoID');
         $field->setLibraryId($libraryId);
         if ($value) {
-            $field->setValue($value);
+            // Support both JSON and simple video ID
+            if ($value[0] === '{' || $value[0] === '[') {
+                $field->setValue($value);
+            } else {
+                $field->setValue(['guid' => $value]);
+            }
         }
         return $field;
     }
