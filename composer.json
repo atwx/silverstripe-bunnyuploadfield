@@ -13,7 +13,7 @@
     "require": {
         "silverstripe/framework": "^6.1",
         "silverstripe/admin": "^3.0",
-        "atwx/silverstripe-cms-popup": "^1"
+        "s2hub/silverstripe-cms-popup": "^1"
     },
     "autoload": {
         "psr-4": {
