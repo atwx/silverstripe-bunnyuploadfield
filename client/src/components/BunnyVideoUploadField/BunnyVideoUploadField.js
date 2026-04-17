@@ -128,14 +128,14 @@ const BunnyVideoUploadField = ({ id, name, value, onChange, data, disabled, read
       setStatus({ text: 'Uploading...', type: 'info' });
       await uploadFile(uploadUrl, file, apiKey, setProgress);
 
-      // Create JSON with video ID and default settings
+      // Create JSON with video ID and current settings from state
       const jsonValue = JSON.stringify({
         guid: videoId,
         VideoID: videoId,
-        autoplay: false,
-        controls: true,
-        muted: false,
-        loop: false,
+        autoplay: autoplay,
+        controls: controls,
+        muted: muted,
+        loop: loop,
       });
       onChange(jsonValue);
       setStatus({ text: 'Upload successful! Video is being processed...', type: 'success' });

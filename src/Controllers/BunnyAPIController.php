@@ -77,17 +77,37 @@ class BunnyAPIController extends Controller
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
+        $curlError = curl_error($ch);
         curl_close($ch);
         
-        if ($httpCode !== 200) {
-            $this->getLogger()->error('Bunny API error: ' . $response);
-            return $this->jsonError('Failed to create video: ' . $error, 500);
+        // Check for curl errors
+        if ($response === false) {
+            $this->getLogger()->error('cURL error: ' . $curlError);
+            return $this->jsonError('Network error: ' . $curlError, 500);
+        }
+        
+        // Check HTTP status code
+        if ($httpCode !== 200 && $httpCode !== 201) {
+            $this->getLogger()->error("Bunny API error (HTTP {$httpCode}): " . $response);
+            $errorMessage = 'Failed to create video';
+            
+            // Try to parse error from response
+            $errorData = json_decode($response, true);
+            if ($errorData && isset($errorData['message'])) {
+                $errorMessage .= ': ' . $errorData['message'];
+            } elseif ($errorData && isset($errorData['error'])) {
+                $errorMessage .= ': ' . $errorData['error'];
+            } else {
+                $errorMessage .= ' (HTTP ' . $httpCode . ')';
+            }
+            
+            return $this->jsonError($errorMessage, 500);
         }
         
         $result = json_decode($response, true);
         
         if (!$result || !isset($result['guid'])) {
+            $this->getLogger()->error('Invalid Bunny response: ' . $response);
             return $this->jsonError('Invalid response from Bunny', 500);
         }
         
