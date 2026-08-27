@@ -3,7 +3,6 @@
 namespace Atwx\BunnyUploadField\Forms;
 
 use SilverStripe\Forms\FormField;
-use SilverStripe\View\Requirements;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Environment;
 
@@ -84,9 +83,6 @@ class BunnyVideoUploadField extends FormField
     
     public function Field($properties = [])
     {
-        Requirements::javascript('atwx/silverstripe-bunnyuploadfield:client/dist/js/bunny-upload-field.js');
-        Requirements::css('atwx/silverstripe-bunnyuploadfield:client/dist/css/bunny-upload-field.css');
-        
         return parent::Field($properties);
     }
     

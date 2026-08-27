@@ -345,4 +345,5 @@ BunnyVideoUploadField.defaultProps = {
   readOnly: false,
 };
 
+export { BunnyVideoUploadField };
 export default fieldHolder(BunnyVideoUploadField);
