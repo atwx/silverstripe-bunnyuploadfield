@@ -16,6 +16,7 @@ class DBBunnyVideo extends DBText
     private static $casting = [
         'EmbedHTML' => 'HTMLFragment',
         'EmbedURL' => 'Varchar',
+        'HlsURL' => 'Varchar',
         'ThumbnailURL' => 'Varchar',
         'VideoID' => 'Varchar',
         'Title' => 'Varchar',
@@ -30,6 +31,13 @@ class DBBunnyVideo extends DBText
     protected $libraryId;
 
     /**
+     * CDN pull zone hostname for this library, e.g. 'vz-xxxxxxxx-xxx.b-cdn.net'.
+     * This is NOT derived from the library ID - Bunny assigns it independently,
+     * so it must be configured explicitly (BUNNY_CDN_HOSTNAME env var).
+     */
+    protected $cdnHostname;
+
+    /**
      * Cached decoded JSON data
      */
     protected $videoData = null;
@@ -38,6 +46,7 @@ class DBBunnyVideo extends DBText
     {
         parent::__construct($name, $options);
         $this->libraryId = Environment::getEnv('BUNNY_LIBRARY_ID');
+        $this->cdnHostname = Environment::getEnv('BUNNY_CDN_HOSTNAME') ?: null;
     }
 
     /**
@@ -55,6 +64,24 @@ class DBBunnyVideo extends DBText
     public function getLibraryId()
     {
         return $this->libraryId;
+    }
+
+    /**
+     * Set custom CDN pull zone hostname
+     */
+    public function setCdnHostname($hostname)
+    {
+        $this->cdnHostname = $hostname;
+        return $this;
+    }
+
+    /**
+     * Get the CDN pull zone hostname, falling back to the (not always correct)
+     * default 'vz-{libraryId}.b-cdn.net' pattern if none was configured
+     */
+    public function getCdnHostname()
+    {
+        return $this->cdnHostname ?: sprintf('vz-%s.b-cdn.net', $this->libraryId);
     }
 
     /**
@@ -185,6 +212,26 @@ class DBBunnyVideo extends DBText
     }
 
     /**
+     * Get the direct HLS playlist URL for this video, for inline playback
+     * with a native/HLS.js player (as opposed to the iframe embed)
+     *
+     * @return string|null
+     */
+    public function getHlsURL()
+    {
+        $videoId = $this->getVideoID();
+        if (!$videoId || !$this->libraryId) {
+            return null;
+        }
+
+        return sprintf(
+            'https://%s/%s/playlist.m3u8',
+            $this->getCdnHostname(),
+            $videoId
+        );
+    }
+
+    /**
      * Get the thumbnail URL for this video
      *
      * @return string|null
@@ -197,8 +244,8 @@ class DBBunnyVideo extends DBText
         }
 
         return sprintf(
-            'https://vz-%s.b-cdn.net/%s/thumbnail.jpg',
-            $this->libraryId,
+            'https://%s/%s/thumbnail.jpg',
+            $this->getCdnHostname(),
             $videoId
         );
     }
